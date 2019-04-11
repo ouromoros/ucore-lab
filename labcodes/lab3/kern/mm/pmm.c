@@ -417,6 +417,14 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    if (!(ptep & PTE_P)) return;
+    struct Page *pg = pte2page(ptep);
+    page_ref_dec(pg);
+    if (pg->ref <= 0) {
+        free_page(pg);
+    }
+    *ptep = 0;
+    tlb_invalidate(pgdir, la);
 }
 
 //page_remove - free an Page which is related linear address la and has an validated pte
