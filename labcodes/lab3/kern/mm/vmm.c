@@ -365,9 +365,13 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     *
     */
     /*LAB3 EXERCISE 1: YOUR CODE*/
-    ptep = get_pte(mm->pgdir, addr, TRUE);
+    ptep = get_pte(mm->pgdir, addr, 1);
+    if (ptep == NULL) {
+        cprintf("get_pte failed!\n");
+        goto failed;
+    }
     if (*ptep == 0) {
-        Page *pg = pgdir_alloc_page(mm->pgdir, addr, perm)
+        struct Page *pg = pgdir_alloc_page(mm->pgdir, addr, perm);
         if (pg == NULL) {
             cprintf("pgdir_alloc_pages failed!\n");
             goto failed;
@@ -389,6 +393,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
             swap_in(mm, addr, &page);
             page_insert(mm->pgdir, page, addr, perm);
             swap_map_swappable(mm, addr, page, 1);
+            page->pra_vaddr = addr;
                                     //(1）According to the mm AND addr, try to load the content of right disk page
                                     //    into the memory which page managed.
                                     //(2) According to the mm, addr AND page, setup the map of phy addr <---> logical addr
@@ -399,6 +404,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
             goto failed;
         }
    }
+   ret = 0;
 failed:
     return ret;
 }
