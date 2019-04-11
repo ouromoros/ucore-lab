@@ -350,26 +350,18 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     pte_t *result = NULL;
     pde_t *pdep = pgdir + PDX(la);   // (1) find page directory entry
     if (*pdep & PTE_P) {
-        result = (pte_t *) KADDR(PDE_ADDR(pde_t)) + PTX(la);
+        result = (pte_t *) KADDR(PDE_ADDR(*pdep)) + PTX(la);
     } else if (create) {
         struct Page *pg = alloc_page();
         if (pg == NULL) goto end;
         set_page_ref(pg, 1);
         uintptr_t paddr = KADDR(page2pa(pg));
-        memset(paddr, 0, PAGESIZE);
+        memset(paddr, 0, PGSIZE);
         *pdep = page2pa(pg) | PTE_P | PTE_W | PTE_U;
         result = paddr + PTX(la);
     }
     end:
     return result;
-                        // (2) check if entry is not present
-                         // (3) check if creating is needed, then alloc page for page table
-                          // CAUTION: this page is used for page table, not for common data page
-                          // (4) set page reference
-                         // (5) get linear address of page
-                          // (6) clear page content using memset
-                          // (7) set page directory entry's permission
-    // (8) return page table entry
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -415,8 +407,8 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
-    if (!(ptep & PTE_P)) return;
-    struct Page *pg = pte2page(ptep);
+    if (!(*ptep & PTE_P)) return;
+    struct Page *pg = pte2page(*ptep);
     page_ref_dec(pg);
     if (pg->ref <= 0) {
         free_page(pg);
